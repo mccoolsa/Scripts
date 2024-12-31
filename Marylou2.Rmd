@@ -1,0 +1,46 @@
+Data extracted as from Spy addon 22/11/2024 - 31/12/2024
+```{r}
+# Load necessary libraries
+library(stringr)
+library(dplyr)
+
+#Read the Lua file
+lua_file <- "C:/Program Files (x86)/World of Warcraft/_classic_era_/WTF/Account/MCCOOL69/Spineshatter/Marylou/SavedVariables/Spy.lua"
+lua_content <- readLines(lua_file)
+
+#Extract lines containing ["wins"] and ["loses"]
+wins_data <- str_extract(lua_content, "\\[\"wins\"\\] = [^,]+")
+loses_data <- str_extract(lua_content, "\\[\"loses\"\\] = [^,]+")
+
+#Remove "0" values or entries with no data
+wins_data <- wins_data[!str_detect(wins_data, "NULL") & !is.na(wins_data)]
+loses_data <- loses_data[!str_detect(loses_data, "NULL") & !is.na(loses_data)]
+
+#Extract numeric values
+wins_values <- as.numeric(str_extract(wins_data, "\\d+"))
+loses_values <- as.numeric(str_extract(loses_data, "\\d+"))
+
+#Count occurrences of 1 in wins and remove them
+count_ones <- sum(wins_values == 1, na.rm = TRUE) # Count entries with value 1
+wins_values <- wins_values[wins_values != 1]     # Update numeric values to exclude 1
+
+#Summarize results for wins and losses
+total_wins <- sum(wins_values, na.rm = TRUE)     # Sum remaining values
+total_loses <- sum(loses_values, na.rm = TRUE)   # Sum all loses
+count_loses <- length(loses_values)              # Count total entries for loses
+
+#Calculate the wins-to-losses ratio
+if (total_loses > 0) {
+  wins_to_losses_ratio <- (total_wins + count_ones) / total_loses
+} else {
+  wins_to_losses_ratio <- NA # Handle division by zero
+}
+
+#Display results
+cat("=== Marylou's 2024 ===\n")
+cat("Total kills (including 1's):", total_wins + count_ones, "\n")
+cat("Total deaths (including 1's):", total_loses, "\n")
+cat("kills-to-death ratio 31/12/2024:", wins_to_losses_ratio, "\n")
+cat("Does not account for individuals dying to NPC mobs, or those out of sight from DOTs", "\n")
+cat("Estimation > 6400+")
+```
