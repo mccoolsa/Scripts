@@ -1,0 +1,417 @@
+---
+title: "Betfair Task Interview"
+author: Conor McCool
+output:
+  pdf_document:
+fontsize: 12pt
+---
+
+Data Cleaning & Exploration
+
+Data was collected and loaded into the Dataframe, and the three parts joined into one dataset to allow for ease of analysis.
+
+```{r setup, include=FALSE}
+#no display errors
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+#load packages
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(tinytex)
+library(knitr)
+library(rmarkdown)
+
+#file paths
+part1 <- "C:/Users/conor/Desktop/interview/part1.xlsx"
+part2 <- "C:/Users/conor/Desktop/interview/part2.xlsx"
+part3 <- "C:/Users/conor/Desktop/interview/part3.xlsx"
+
+#read excel files into data frames
+df1 <- read_excel(part1)
+df2 <- read_excel(part2)
+df3 <- read_excel(part3)
+
+#remove rows where premium_account_yn is "Y" (tend to be winners)
+df1 <- df1 %>% filter(premium_account_yn != "Y")
+df2 <- df2 %>% filter(premium_account_yn != "Y")
+df3 <- df3 %>% filter(premium_account_yn != "Y")
+
+#combine the data frames into one
+combined_df <- bind_rows(df1, df2, df3)
+
+#list of sports to filter
+sports_list <- c("American Football", "Athletics", "Australian Rules", "Baseball", "Basketball",
+                 "Boxing", "Cricket", "Cycling", "Darts", "Esports", "Gaelic Games",
+                 "Golf", "Greyhound Racing", "Horse Racing", "Ice Hockey", "Mixed Martial Arts", "MMA / UFC", 
+                 "Motor Sport", "Politics", "Rugby Union", "Soccer", "Special Bets", "Tennis", "Volleyball",
+                 "Winter Sports")
+
+#channels list
+channels_list <- c("Mobile", "Vendor App", "Desktop")
+
+
+#display the first few rows of each data frame
+head(df1)
+head(df2)
+head(df3)
+
+#see the structure of the data frames
+str(df1)
+str(df2)
+str(df3)
+```
+
+```{r, include=FALSE}
+
+#filter the combined data frame for the specified sports and calculate the mean amount
+mean_bet_total <- combined_df %>%
+  filter(sport_name %in% sports_list) %>%
+  group_by(sport_name) %>%
+  summarise(mean_total_bet_amount_gbp = mean(total_bet_amount_gbp, na.rm = TRUE))
+```
+
+```{r, include=FALSE}
+#display the result
+print(head(mean_bet_total, 10))
+```
+
+Cricket is showing an extortionately high total compared to other sports, display mean taking into account the amount of "bets" placed. Lets see which are the most popular markets in terms of bets placed. Use this as a means to decipher the data and focus on what is most popular within the general public.
+
+```{r, include=FALSE}
+#calculate the mean value of each bet for the specified sports
+mean_bet_value <- combined_df %>%
+  filter(sport_name %in% sports_list) %>%
+  mutate(mean_bet = total_bet_amount_gbp / bets) %>%
+  group_by(sport_name) %>%
+  summarise(mean_value_per_bet = mean(mean_bet, na.rm = TRUE))
+```
+
+```{r, include=FALSE}
+#display the result
+print(head(mean_bet_value, 10))
+```
+
+```{r, include=FALSE}
+#filter the data frame for various channels and sum the number of bets
+bets_by_channel <- combined_df %>%
+  filter(channel %in% channels_list) %>%
+  group_by(channel) %>%
+  summarise(total_bets = sum(bets, na.rm = TRUE))
+```
+
+```{r, include=FALSE}
+#display the result
+print(head(bets_by_channel, 10))
+```
+
+```{r, include=FALSE}
+#calculate the total number of bets placed per column sport_name
+bets_per_sport <- combined_df %>%
+  group_by(sport_name) %>%
+  summarise(total_bets = sum(bets, na.rm = TRUE))
+```
+
+```{r, include=FALSE}
+#display the result
+print(head(bets_per_sport, 10))
+```
+
+From observing within R, we can see that Greyhound Racing, Horse Racing and Soccer are the three most popular. Use this as a filter for which to focus our statistical analysis.
+
+```{r, include=FALSE}
+#list of sport markets to filter
+top3 <- c("Horse Racing", "Greyhound Racing", "Soccer")
+
+#filter the combined data frame for the specified sports
+filtered_df <- combined_df %>%
+  filter(sport_name %in% top3)
+
+#calculate the number of occurrences of each market_type_group
+popular_markets <- filtered_df %>%
+  group_by(sport_name, market_type_group) %>%
+  summarise(count = n()) %>%
+  arrange(sport_name, desc(count))
+```
+
+```{r, include=FALSE}
+#display the result
+print(popular_markets)
+```
+
+Lets make a plot for the three most popular markets.
+
+```{r,include=FALSE}
+#separate data for each sport
+horse_racing <- popular_markets %>% filter(sport_name == "Horse Racing")
+greyhound_racing <- popular_markets %>% filter(sport_name == "Greyhound Racing")
+soccer <- popular_markets %>% filter(sport_name == "Soccer")
+
+#set global option to avoid scientific notation
+options(scipen = 999)
+
+#create bar plot for Horse Racing
+max_y_value_horse_racing <- max(horse_racing$count) * 1.2
+plot_horse_racing <- ggplot(horse_racing, aes(x = reorder(market_type_group, -count), y = count, fill = market_type_group)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = -0.5) +
+  labs(title = "Popular Markets in Horse Racing", x = "Market Type Group", y = "Number of Bets") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none")+
+  ylim(0, max_y_value_horse_racing)
+
+#create bar plot for Greyhound Racing
+max_y_value_greyhound_racing <- max(greyhound_racing$count) * 1.2
+plot_greyhound_racing <- ggplot(greyhound_racing, aes(x = reorder(market_type_group, -count), y = count, fill = market_type_group)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count), vjust = -0.5) +
+  labs(title = "Popular Markets in Greyhound Racing", x = "Market Type Group", y = "Number of Bets") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none")+
+  ylim(0, max_y_value_greyhound_racing)
+
+#create bar plot for Soccer
+max_y_value_soccer <- max(soccer$count) * 1.2
+plot_soccer <- ggplot(soccer, aes(x = reorder(market_type_group, -count), y = count, fill = market_type_group)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Popular Markets in Soccer", x = "Market Type Group", y = "Number of Bets") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10), legend.position = "none") +
+  geom_text(aes(label = count), vjust = -0.5, size = 4) +
+  scale_y_continuous(labels = scales::comma) +
+  ylim(0, max_y_value_soccer)
+
+```
+
+```{r}
+#print the plots
+print(plot_horse_racing)
+print(plot_greyhound_racing)
+print(plot_soccer)
+```
+
+View these markets in terms of popularity
+
+```{r, include=FALSE}
+#also view by popularity
+total_bets_per_sport <- filtered_df %>%
+  group_by(sport_name) %>%
+  summarise(total_bets = sum(bets, na.rm = TRUE))
+
+#print the total number of bets for each sport
+print(total_bets_per_sport)
+```
+```{r}
+#plot a histogram
+ggplot(total_bets_per_sport, aes(x = sport_name, y = total_bets, fill = sport_name)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Number of Bets for Each Sport", x = "Sport", y = "Total Number of Bets") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = total_bets), vjust = -0.5)
+```
+
+Here, we can see out of 62,400,888 bets, 35.93% were placed in Greyhound Racing, 38.64% were placed in Horse Racing, and 25.43% in Soccer, respectively.
+
+Next, lets see which who the most profitable customers are, based on the amount of commission they earn.
+
+```{r, include=FALSE}
+#calculate the individuals who earned a total commission greater than 2% of their total bet amount
+high_commission_accounts <- filtered_df %>%
+  filter(total_commission_apportioned_amount_gbp > 0.02 * total_bet_amount_gbp) %>%
+  group_by(account_id, sport_name) %>%
+  summarise(
+    #calculate sums of commission and bet amount
+    total_commission = sum(total_commission_apportioned_amount_gbp, na.rm = TRUE),
+    total_bet_amount = sum(total_bet_amount_gbp, na.rm = TRUE),
+    percentage_commission = (total_commission / total_bet_amount) * 100
+  ) %>%
+  filter(percentage_commission > 2)
+```
+
+```{r, include=FALSE}
+#display the result
+print(high_commission_accounts)
+```
+
+It may be wise to eliminate these accounts from availing of the free bet offer, considering these are individuals already in profit, and will likely continue to use the service. Let's look at the individual markets that offered the least amount of commission.
+
+```{r, include=FALSE}
+#calculate the total commission and total bet amount for each sport
+commission_summary <- filtered_df %>%
+  group_by(sport_name) %>%
+  summarise(
+    total_commission = sum(total_commission_apportioned_amount_gbp, na.rm = TRUE),
+    total_bet_amount = sum(total_bet_amount_gbp, na.rm = TRUE)
+  ) %>%
+  mutate(percentage_commission = (total_commission / total_bet_amount) * 100)
+```
+
+```{r, include=FALSE}
+#display the result
+print(commission_summary)
+```
+```{r}
+#plot a histogram of the percentage commission for each sport
+ggplot(commission_summary, aes(x = sport_name, y = percentage_commission, fill = sport_name)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Percentage of Commission Earned Based on Total Bet Amount by Sport",
+       x = "Sport",
+       y = "Percentage of Total Commission") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = paste0(round(percentage_commission, 3), "%")), vjust = -0.5)
+```
+
+Here, we can see Greyhound Racing clears the Total Amount of Commission Earned in relation to the amount of money being put down, indicating that those markets have an "insider knowledge" advantage. While Horse Racing does experience something similar, it does not quite compare to the yield of Greyhound Racing for the average customer.
+
+Lets look how it compares without the customers earning above 2% Commission.
+
+```{r, include=FALSE}
+#calculate 2% commission threshold and filter out individuals who earned more than that
+filtered_df <- filtered_df %>%
+  filter(total_commission_apportioned_amount_gbp <= 0.02 * total_bet_amount_gbp)
+
+#calculate the total commission and total bet amount for each sport
+commission_summary <- filtered_df %>%
+  group_by(sport_name) %>%
+  summarise(
+    total_commission = sum(total_commission_apportioned_amount_gbp, na.rm = TRUE),
+    total_bet_amount = sum(total_bet_amount_gbp, na.rm = TRUE)
+  ) %>%
+  mutate(percentage_commission = (total_commission / total_bet_amount) * 100)
+```
+
+```{r, include=FALSE}
+#display the result
+print(commission_summary)
+```
+```{r}
+
+#plot a histogram of the percentage commission for each sport
+ggplot(commission_summary, aes(x = sport_name, y = percentage_commission, fill = sport_name)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Commission Based on Total Bet Amount by Sport W/O 2% Commissioners",
+       x = "Sport",
+       y = "Percentage of Total Commission") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = paste0(round(percentage_commission, 3), "%")), vjust = -0.5)
+```
+
+Somewhat a similar story, but much less commission earned. These would be the type of individuals that should be availing of the free bet offer to promote use of the exchange.
+
+How will this be distributed?
+
+While narrowing down the exchange to the three main markets, observing how much commission earned relative to the amount of bets placed, we can calculate how this can be distributed evenly among the markets.
+
+However, when observing the commission_summary, we see that there is a much greater volume of bets for Soccer compared to the others.
+
+```{r, include=FALSE}
+print(commission_summary)
+```
+
+```{r, include=FALSE}
+#calculate the total bet amount across all sports
+total_bet_amount_top3 <- sum(commission_summary$total_bet_amount)
+
+#add percentage of total bets to the summary for analysis
+commission_summary <- commission_summary %>%
+  mutate(percentage_of_total_bets = (total_bet_amount / total_bet_amount_top3) * 100)
+
+#max y value to increase height of y axis
+max_y_value <- max(commission_summary$total_bet_amount) * 1.15
+```
+```{r}
+ggplot(commission_summary, aes(x = sport_name, y = total_bet_amount, fill = sport_name)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Bet Amount by Sport W/O 2% Commission Earners",
+       x = "Sport",
+       y = "Total Bet Amount (GBP)") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = paste0(scales::comma(total_bet_amount), "\n(", round(percentage_of_total_bets, 2), "%)")), 
+            vjust = -0.5) +
+
+    ylim(0, max_y_value)
+```
+
+Now, we can evenly distribute the allocation of the free bets to each market. However, Soccer contains a lot of arbitrage betting involving a large amount being placed by laying on Match Odds and Over/Under Markets. It would make sense to promote the most free bets to Soccer, since it has the lowest commission rate and the highest amount of total bets.
+
+It is worth noting that the commission earned negatively affects the amount of free bet allocated to the specific market. Lets look how the graph alters as the commission is weighted and normalized.
+
+```{r,include=FALSE}
+#calculate the total bet amount and commission earned for each customer within each sport
+customer_stats <- filtered_df %>%
+  group_by(account_id, sport_name) %>%
+  summarise(
+    total_bet_amount = sum(total_bet_amount_gbp, na.rm = TRUE),
+    total_commission = sum(total_commission_apportioned_amount_gbp, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#calculate total bet amount and commission earned across every individual customer
+total_bet_amount_all <- sum(customer_stats$total_bet_amount)
+total_commission_all <- sum(customer_stats$total_commission)
+
+#normalize total bet amount and commission earned to create weights
+customer_stats <- customer_stats %>%
+  mutate( #mutate to modify variables within the dataframe
+    betWeight = total_bet_amount / total_bet_amount_all, 
+    commissionWeight = total_commission / total_commission_all
+  )
+
+#adjust the weights to account for the negative impact of commission, ensuring non-negative weights
+customer_stats <- customer_stats %>%
+  mutate(finalWeight = pmax(betWeight - commissionWeight, 0)) #pmax computes parallel maximum of the two vectors,
+                                                              #also ensures the values do not fall below 0
+
+#normalize the final weights so they sum to 1 for consistency in our finalWeight
+customer_stats <- customer_stats %>%
+  mutate(finalWeight = finalWeight / sum(finalWeight))#achieves a uniform, refined structure by normalization
+
+#assign 10,000,000 in free bets
+total_free_bets <- 10000000 
+
+#allocate free bets based on the normalized weights
+customer_stats <- customer_stats %>%
+  mutate(free_bet_allocation = finalWeight * total_free_bets)
+
+#aggregate the free bet allocation for each horse racing, soccer, greyhounds
+sport_allocations <- customer_stats %>%
+  group_by(sport_name) %>%
+  summarise(total_free_bet_allocation = sum(free_bet_allocation)) %>%
+  ungroup()
+
+#calculate the percentage of total free bets for each sport
+sport_allocations <- sport_allocations %>%
+  mutate(percentage_of_total = (total_free_bet_allocation / total_free_bets) * 100)
+```
+
+```{r, include=FALSE}
+#display the aggregated results
+print(sport_allocations)
+```
+```{r}
+
+
+#plot a bar chart for free bet allocations 
+max_y_value <- max(sport_allocations$total_free_bet_allocation) * 1.15 #higher y axis
+ggplot(sport_allocations, aes(x = sport_name, y = total_free_bet_allocation, fill = sport_name)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Free Bet Allocation by Sport",
+       x = "Sport",
+       y = "Total Free Bet Allocation (GBP)") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = paste0(scales::comma(total_free_bet_allocation), "\n(", round(percentage_of_total, 3), "%)")), 
+            vjust = -0.5) +
+  ylim(0, max_y_value)
+```
+
+In conclusion, taking into account the filtered data, excluding the individuals earning \>2% commission, and adding a weighted value to the commission called "betWeight", which takes into account the commission percentage, we can determine that the Soccer market should be allocated roughly 7.91 million, Horse Racing 1.97 million, and Greyhound Racing a mere 104,310, respectively.
+
+To note, this includes all markets within the dataset. There existed a lot of short prices that would influence the total amount of bets placed in GBP, and a wide range of markets within the Soccer dataset that would have contributed to the skewed dataset, such as Over/Under Markets, and perhaps Match Odds. Horse Racing would include a more diverse range of odds which would result in the lack of volume of bets being placed in terms of GBP, but had the highest popularity. Perhaps Horse Racing and maybe even Greyhound Racing should be allocated more than what the data suggests, but from a business standpoint, giving the free bets to soccer would be most beneficial to the company.
+
+Some pointers to include are that there was no major international tournament during 2023, which would have yielded more Soccer bets. And, perhaps it may have been much better insight to analyze when to give out the free bets, for example in March/April to allocate for Horse Racing customers during Cheltenham/Aintree/Punchestown, or in October/November for the Shelbourne Derby in Greyhound Racing.
+
+Some additional data that may have been useful would have been to analyze when the bets are placed, regional trends such as a large influx of bettors in a certain region betting on a horse running locally, customers net balance relative to their expenditure, or even the Age bracket and what markets are most popular for each age group.
+
