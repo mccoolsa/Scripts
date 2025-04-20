@@ -1,26 +1,31 @@
-Data extracted as from Spy addon 22/11/2024 - 31/12/2024
+Data extracted as from Spy addon WOW CLASSIC 20th Anniversary 
+
+Executable in R
+
+Note - This will work for the whole time frame the Spy addon is active on your given character
 ```{r}
-# Load necessary libraries
+#load necessary libraries
 library(stringr)
 library(dplyr)
 
-#Read the Lua file
-lua_file <- "C:/Program Files (x86)/World of Warcraft/_classic_era_/WTF/Account/MCCOOL69/Spineshatter/Marylou/SavedVariables/Spy.lua"
+#read the Lua file
+#change lua_file destination to C:/Program Files (x86)/World of Warcraft/_classic_era_/WTF/Account/YOUR_ACCOUNT_NAME/CHARACTER_NAME/SavedVariables/Spy.lua
+lua_file <- "C:/Program Files (x86)/World of Warcraft/_classic_era_/WTF/Account/MCCOOL69/Spineshatter/Marylou/SavedVariables/Spy.lua" 
 lua_content <- readLines(lua_file)
 
-#Extract lines containing ["wins"] and ["loses"]
+#extract lines containing ["wins"] and ["loses"]
 wins_data <- str_extract(lua_content, "\\[\"wins\"\\] = [^,]+")
 loses_data <- str_extract(lua_content, "\\[\"loses\"\\] = [^,]+")
 
-#Remove "0" values or entries with no data
+#remove "0" values or entries with no data
 wins_data <- wins_data[!str_detect(wins_data, "NULL") & !is.na(wins_data)]
 loses_data <- loses_data[!str_detect(loses_data, "NULL") & !is.na(loses_data)]
 
-#Extract numeric values
+#extract numeric values
 wins_values <- as.numeric(str_extract(wins_data, "\\d+"))
 loses_values <- as.numeric(str_extract(loses_data, "\\d+"))
 
-#Count occurrences of 1 in wins and remove them
+#count occurrences of 1 in wins and remove them (this was to investigate the extent of multiple kills)
 count_ones <- sum(wins_values == 1, na.rm = TRUE) # Count entries with value 1
 wins_values <- wins_values[wins_values != 1]     # Update numeric values to exclude 1
 
@@ -36,11 +41,16 @@ if (total_loses > 0) {
   wins_to_losses_ratio <- NA # Handle division by zero
 }
 
+#add estimation ratio (shadow priest dots / people running away)
+estimation_ratio <- 1 / 5
+estimated_extra_kills <- (total_wins + count_ones) * estimation_ratio
+estimated_total_kills <- (total_wins + count_ones) + estimated_extra_kills
+
 #Display results
-cat("=== Marylou's 2024 ===\n")
+cat("=== Summary ===\n")
 cat("Total kills (including 1's):", total_wins + count_ones, "\n")
-cat("Total deaths (including 1's):", total_loses, "\n")
-cat("kills-to-death ratio 31/12/2024:", wins_to_losses_ratio, "\n")
-cat("Does not account for individuals dying to NPC mobs, or those out of sight from DOTs", "\n")
-cat("Estimation > 6400+")
+cat("Total deaths:", total_loses, "\n")
+cat("kills-to-death ratio:", wins_to_losses_ratio, "\n")
+cat("Does not account for individuals dying to NPC mobs, or those out of sight from DOTs\n")
+cat("Estimated total kills (with 120% adjustment):", round(estimated_total_kills), "\n") #Change per class - this was individual for Shadow Priest mainly in Hillsbrad Fields
 ```
