@@ -4,10 +4,10 @@ import yt_dlp
 from datetime import datetime, timedelta
 
 #config
-CHANNEL_UPLOADS_PLAYLIST = 'https://www.youtube.com/playlist?list=UUmZT7978t08mpJJGD-SdRaQ' #YouTube playlist that includes all videos uploaded by the channel
-DOWNLOAD_PATH = r'C:\Users\conor\Videos\mcconnell'#local folder to store downloaded videos
+CHANNEL_UPLOADS_PLAYLIST = 'https://www.youtube.com/playlist?list=channelurl' #YouTube playlist that includes all videos uploaded by the channel (make sure  its in encrypted format such as US2i283yh14nbjut5 rather than a user created URl
+DOWNLOAD_PATH = r'C:\Users\conor\Videos\videodownloader'#local folder to store downloaded videos
 DOWNLOADED_FILE = os.path.join(DOWNLOAD_PATH, 'downloaded_videos.json') #file to store list of already downloaded video IDs
-LOG_FILE = os.path.join(DOWNLOAD_PATH, 'mcconnell_log.txt') #log file path
+LOG_FILE = os.path.join(DOWNLOAD_PATH, 'videodownloader_log.txt') #log file path
 
 # YouTube API limits
 MAX_DURATION = 15 * 60 #maximum video duration (in seconds) = 15 minutes
@@ -17,7 +17,7 @@ OLD_VIDEO_STREAK_LIMIT = 3 #stop scanning after this many old videos in a row
 # -------- LOGGING FUNCTION -------- #
 
 def log(message: str):
-    # """Write a timestamped message to both console and log file."""
+    # Write a timestamped message to both console and log file
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     full_message = f"[{timestamp}] {message}"
     print(full_message)
