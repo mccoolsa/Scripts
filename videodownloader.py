@@ -112,3 +112,4 @@ with open(DOWNLOADED_FILE, 'w') as f:
     json.dump(list(downloaded), f)
 
 log("✅ Done! All recent short uploads downloaded.\n")
+
